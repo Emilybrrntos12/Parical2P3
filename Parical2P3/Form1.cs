@@ -15,12 +15,15 @@ namespace Parical2P3
     {
         WindowsMediaPlayer wmpPlayer;
         IWMPPlaylist lista;
+        Queue<int> cola;
+
         public Form1()
         {
             InitializeComponent();
             wmpPlayer = new WindowsMediaPlayer();
             lista = wmpPlayer.newPlaylist("Reproduccion acutual ", "");
             wmpPlayer.currentPlaylist = lista;
+            cola = new Queue<int>();
         }
 
         private void AgregarCancion(string rutaCancion)
@@ -30,12 +33,17 @@ namespace Parical2P3
 
             // Mostrar la canción agregada en la lista de reproducción
             ListaCanciones.Items.Add(media.name);
+
+            // Agregar la canción a la cola
+            cola.Enqueue(lista.count - 1);
         }
 
         private void EliminarCancion(int index)
         {
+            // Eliminar la canción de la lista y de la cola
             lista.removeItem(lista.get_Item(index));
             ListaCanciones.Items.RemoveAt(index);
+            cola = new Queue<int>(cola.Where(i => i != index).Select(i => i < index ? i : i - 1));
         }
 
         private void ReproducirCancion(int index)
@@ -47,9 +55,9 @@ namespace Parical2P3
 
         private void ReproducirSiguienteCancion()
         {
-            if (lista.count > 0)
+            if (cola.Count > 0)
             {
-                int index = (ListaCanciones.SelectedIndex + 1) % lista.count;
+                int index = cola.Dequeue();
                 ReproducirCancion(index);
             }
         }
@@ -64,7 +72,15 @@ namespace Parical2P3
         {
             if (ListaCanciones.SelectedIndex >= 0)
             {
-                ReproducirCancion(ListaCanciones.SelectedIndex);
+                // Reiniciar la cola y agregar la canción seleccionada y todas las siguientes
+                int index = ListaCanciones.SelectedIndex;
+                cola = new Queue<int>();
+                for (int i = index; i < lista.count; i++)
+                {
+                    cola.Enqueue(i);
+                }
+
+                ReproducirCancion(index);
             }
         }
 
@@ -76,11 +92,15 @@ namespace Parical2P3
 
             if (cajaDeBusqueda.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
-
-
                 foreach (string file in cajaDeBusqueda.FileNames)
                 {
                     AgregarCancion(file);
+                }
+
+                // Si la cola estaba vacía, comenzar a reproducir desde la primera canción
+                if (cola.Count == 0)
+                {
+                    ReproducirCancion(0);
                 }
             }
         }
